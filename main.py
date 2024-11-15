@@ -108,3 +108,11 @@ async def check_compliance_endpoint(webpage_url: str, policy_url: str):
     # print(compliance_result)
 
     return compliance_result
+
+
+@app.get("/example", response_model=ComplianceResponse)
+async def example():
+    """
+    Endpoint to test compliance  endpoint with test data
+    """
+    return await check_compliance_endpoint("https://mercury.com/", "https://stripe.com/docs/treasury/marketing-treasury")
