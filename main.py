@@ -1,8 +1,10 @@
-import openai
 from fastapi import FastAPI, HTTPException
 import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
+from typing import Dict
+from models import ComplianceResponse
+import json
 
 # Initialize Fastapi
 app = FastAPI()
@@ -11,7 +13,7 @@ app = FastAPI()
 client = OpenAI()
 
 
-def fetch_webpage_content(url: str):
+def fetch_webpage_content(url: str) -> str:
     """
     Extracts webpage content using BeautifulSoup4
     :param url: url of the webpage
@@ -38,7 +40,7 @@ def fetch_webpage_content(url: str):
         raise HTTPException(status_code=400, detail=f"Error fetching webpage: {str(e)}")
 
 
-def check_compliance(webpage_content, policy_content):
+def check_compliance(webpage_content, policy_content) -> Dict:
     """
     Checks webpage content against compliance policy using OpenAI.
     :param webpage_content: webpage content
@@ -54,6 +56,18 @@ def check_compliance(webpage_content, policy_content):
 
                Webpage Content:
                {webpage_content}
+               
+               Provide a valid JSON response with the following structure:
+                {{
+                    "violations": [
+                        {{
+                            "section": "specific policy section",
+                            "violation": "description of the violation",
+                            "recommendation": "how to fix it"
+                         }}
+                     ],
+                    "summary": "overall compliance summary"
+                }}
                """
 
         response = client.chat.completions.create(
@@ -64,15 +78,16 @@ def check_compliance(webpage_content, policy_content):
                     "role": "user",
                     "content": prompt
                 }
-            ]
+            ],
+            response_format={"type": "json_object"}
         )
 
-        return response.choices[0].message.content
+        return json.loads(response.choices[0].message.content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking compliance: {str(e)}")
 
 
-@app.post("/check-compliance")
+@app.post("/check-compliance", response_model=ComplianceResponse)
 async def check_compliance_endpoint(webpage_url: str, policy_url: str):
     """
      Checks webpage content against compliance policy using AI and return findings.
